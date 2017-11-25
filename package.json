@@ -2,10 +2,18 @@
   "name": "cx_zjzs_net-helper",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Soha Jin <soha@lohu.info>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.17.1",
+    "cheerio": "^1.0.0-rc.2"
+  },
+  "window": {
+	"width": 400,
+	"height": 600
+  }
 }

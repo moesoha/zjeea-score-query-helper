@@ -1,0 +1,312 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />			
+	</head>
+	<body>
+		<details>
+			<summary>设置和帮助</summary>
+			<small>查询系统根地址</small> <input id="conf-baseUrl" value="http://cx.zjzs.net/" /><br />
+			<small>会话Cookie名</small> <input id="conf-sessionIdName" value="ASP.NET_SessionId" /><br />
+			<small>验证码相对地址</small> <input id="conf-captchaUrl" value="/INC/VerifyCode.aspx" /><br />
+			<small>查询页面相对地址</small> <input id="conf-resultUrl" value="/exam/xyks201702/resault.aspx" /><br />
+			<hr>
+			<p>这个系统可以帮助快速查询学考选考高考成绩并导出。因为有一定的匹配规则，目前可使用的规则已在2017.6高考和2017.11学选考查询中确认。</p>
+			<hr>
+			<p>在开始查询之前请点击第一个按钮，输入验证码后输入框会自动锁定，需要重新点击一次才能查询下一个人。</p>
+			<hr>
+			<p>在开始查询之前请点击第一个按钮，输入验证码后输入框会自动锁定，需要重新点击一次才能查询下一个人。</p>
+			<hr>
+		</details>
+		<details>
+			<summary>本次查询数据导出</summary>
+			<p><small>JSON保存位置</small> <input type="file" id="json-data-path" nwsaveas="data.json"></p>
+			<p><small><b>JSON</b>: 本格式不会自动合并相同准考证号的数据，并且数据格式需要用户自己处理。</small></p>
+			<button id="save-json">保存</button>
+			<hr>
+			<p><small>CSV保存位置</small> <input type="file" id="csv-data-path" nwsaveas="data.csv"></p>
+			<p><small><b>CSV</b>: 本格式兼容Excel，建议打开后另存为xls或xlsx格式，并且会合并相同准考证号的数据。</small></p>
+			<button id="save-csv">保存</button><br />
+			<hr>
+		</details>
+		<button id="start">开始查询一个人的</button><br />
+		<input id="zkzh" placeholder="准考证号" disabled /><br />
+		<input id="sfzh" placeholder="身份证号（学选考查询）" disabled />
+		<input id="password" type="password" placeholder="密码（高考查询）" disabled />
+		<br /><img id="captcha-show" src="" width="90" height="41"/><input id="captcha-input" disabled />
+		<br /><b><i><p id="warning" style="color: red;"></p></i></b>
+		<br /><div id="display"></div>
+		<br /><small><p id="session-id"></p></small>
+
+	</body>
+</html>
+
+<script>
+	let baseUrl="http://cx.zjzs.net/",sessionIdName="ASP.NET_SessionId";
+	let captchaUrl="/INC/VerifyCode.aspx",resultUrl="/exam/xyks201702/resault.aspx";
+	let webpageSaveDir='./save';
+	
+	var win=nw.Window.get();
+
+	const axios=require('axios'),cheerio=require('cheerio');
+	const fs=require('fs');
+	let currentAxios;
+	let dataGlobal=[];
+
+	let getValueWithKey=function (objarr,key){
+		for(var i in objarr){
+			if(objarr.hasOwnProperty(i) && objarr[i].key==key){
+				return objarr[i].value;
+			}
+		}
+		return "";
+	}
+
+	let loadConfig=function (){
+		baseUrl=document.getElementById('conf-baseUrl').value;
+		sessionIdName=document.getElementById('conf-sessionIdName').value;
+		captchaUrl=document.getElementById('conf-captchaUrl').value;
+		resultUrl=document.getElementById('conf-resultUrl').value;
+	}
+	
+	let saveCSVData=function (){
+		let path=document.getElementById('csv-data-path').value;
+		if(path && path!=""){
+			let processData={};
+			for(var i in dataGlobal){
+				if(dataGlobal.hasOwnProperty(i)){
+					let thisSet=dataGlobal[i];
+					for(var j in thisSet){
+						if(thisSet.hasOwnProperty(j) && !processData.hasOwnProperty(thisSet[j].key)){
+							processData[thisSet[j].key]=[];
+						}
+					}
+				}
+			}
+			for(var i in dataGlobal){
+				if(dataGlobal.hasOwnProperty(i)){
+					let thisSet=dataGlobal[i];
+					for(var j in processData){
+						if(processData.hasOwnProperty(j)){
+							processData[j].push(getValueWithKey(thisSet,j));
+						}
+					}
+				}
+			}
+
+			let csv="",loopn=999999999999,processed=false;
+			let thisline=[];
+			for(var j in processData){
+				if(processData.hasOwnProperty(j)){
+					processed=true;
+					if(processData[j].length<loopn){
+						loopn=processData[j].length;
+					}
+					thisline.push('"'+j+'"');
+				}
+			}
+			if(!processed){
+				loopn=-1;
+			}
+			csv+=thisline.join(',')+"\r\n";
+
+			for(let i=0;i<loopn;i++){
+				let thisline=[];
+				for(var j in processData){
+					if(processData.hasOwnProperty(j)){
+						thisline.push('"'+processData[j][i]+'"');
+					}
+				}
+				csv+=thisline.join(',')+"\r\n";
+			}
+			
+			try{
+				fs.writeFileSync(path,csv);
+				alert('保存成功！');
+			}catch(e){
+				console.error(e);
+				document.getElementById('warning').innerText=e;
+			}
+		}
+	};
+	
+	let saveJSONData=function (){
+		let path=document.getElementById('json-data-path').value;
+		if(path && path!=""){
+			try{
+				fs.writeFileSync(path,JSON.stringify(dataGlobal));
+				alert('保存成功！');
+			}catch(e){
+				console.error(e);
+				document.getElementById('warning').innerText=e;
+			}
+		}
+	};
+
+	let showJSONData=function (){
+		let time=new Date().getTime().toString();
+		let dataInJson=JSON.stringify(dataGlobal);
+		window.localStorage.setItem('data_'+time,dataInJson);
+		nw.Window.open('popup.html?'+time,{
+			focus: true
+		},function (newWin){
+			newWin.on('loaded',function (){
+				newWin.window.document.getElementById('json').innerText=dataInJson;
+			});
+		});
+	};
+
+	let cookieRemove=function (opt){
+		return new Promise(function (resolve){
+			win.cookies.remove(opt,resolve);
+		});
+	};
+
+	let clearAllTargetCookie=function (){
+		return new Promise(async function (resolve){
+			win.cookies.getAll({
+				url: baseUrl
+			},async function(data){
+				for(var i in data){
+					if(data.hasOwnProperty(i)){
+						await cookieRemove({
+							url: baseUrl,
+							name: data[i].name
+						});
+					}
+				}
+				resolve();
+			});
+		});
+	};
+
+	let createAxios=async function (){
+		loadConfig();
+		let hereAxios=axios.create({
+			baseURL: baseUrl,
+			withCredentials: true,
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded'
+			}
+		});
+
+		let a=await hereAxios.get(captchaUrl,{
+			responseType: 'arraybuffer'
+		});
+		let cookie=a.headers['set-cookie'];
+		let captchaRawData=new Buffer(a.data,'binary');
+		let captchaData=captchaRawData.toString('base64');
+		// console.log(captchaRawData);
+		// console.log(captchaData);
+		document.getElementById('captcha-show').setAttribute('src','data:image/jpeg;base64,'+captchaData);
+		// console.log(a.headers);
+		win.cookies.get({
+			url: baseUrl,
+			name: sessionIdName
+		},function(data){
+			document.getElementById('session-id').innerHTML=data.value;
+		});
+		currentAxios=hereAxios;
+		return hereAxios;
+	};
+
+	let displayData=function (data){
+		let simpleHtml='<div>';
+		for(var i in data){
+			if(data.hasOwnProperty(i)){
+				simpleHtml+="<p>";
+				simpleHtml+="<b>";
+				simpleHtml+=data[i].key;
+				simpleHtml+="</b>";
+				simpleHtml+=": ";
+				simpleHtml+="<span>";
+				simpleHtml+=data[i].value;
+				simpleHtml+="</span>";
+				simpleHtml+="</p>";
+			}
+		}
+		simpleHtml+="</div>";
+
+		document.getElementById('display').innerHTML=simpleHtml;
+	};
+
+	let requestInformation=async function ({zkzh,sfzh,password,yzm}){
+		try{
+			let params=new URLSearchParams();
+			params.append('ZKZH',zkzh);
+			params.append('SFZH',sfzh);
+			params.append('PASSWORD',password);
+			params.append('yzm',yzm);
+
+			let data=await currentAxios.post(resultUrl,params.toString());
+
+			let warningInfo=data.data.match(new RegExp('alert\\(\'(.+)\'\\);'));
+			if(warningInfo){
+				document.getElementById('warning').innerText=warningInfo[1];
+				await createAxios();
+			}else{
+				let $=cheerio.load(data.data);
+				let datas=[];
+				$('.block').each(function (){
+					datas.push({
+						key: $(this).children('.blo_top').text().trim(),
+						value: $(this).children('.blo_bottom').children('span').text().trim()
+					});
+				});
+				dataGlobal.push(datas);
+				displayData(datas);
+			}
+		}catch(e){
+			console.error(e);
+			document.getElementById('warning').innerText=e;
+		}
+		document.getElementById('captcha-input').value="";
+		document.getElementById('captcha-input').removeAttribute('disabled');
+	};
+
+	let requestHandler=function (){
+		let info={
+			zkzh: document.getElementById('zkzh').value,
+			sfzh: document.getElementById('sfzh').value,
+			password: document.getElementById('password').value,
+			yzm: document.getElementById('captcha-input').value
+		};
+		requestInformation(info);
+	};
+
+	document.getElementById('start').onclick=async function(){
+		document.getElementById('display').innerHTML="";
+		document.getElementById('warning').innerHTML="";
+		document.getElementById('captcha-input').value="";
+		document.getElementById('captcha-input').removeAttribute('disabled');
+		document.getElementById('sfzh').value="";
+		document.getElementById('zkzh').value="";
+		document.getElementById('password').value="";
+		document.getElementById('sfzh').removeAttribute('disabled');
+		document.getElementById('password').removeAttribute('disabled');
+		document.getElementById('zkzh').removeAttribute('disabled');
+		await clearAllTargetCookie();
+		await createAxios();
+	};
+
+	document.getElementById('save-json').onclick=function(){
+		saveJSONData();
+	};
+
+	document.getElementById('save-csv').onclick=function(){
+		saveCSVData();
+	};
+
+	document.getElementById('captcha-show').onclick=async function(){
+		await createAxios();
+	};
+
+	document.getElementById('captcha-input').onkeyup=function (e){
+		if(document.getElementById('captcha-input').value.length>=4 || e.key==="Enter"){
+			document.getElementById('captcha-input').setAttribute('disabled',true);
+			document.getElementById('sfzh').setAttribute('disabled',true);
+			document.getElementById('password').setAttribute('disabled',true);
+			document.getElementById('zkzh').setAttribute('disabled',true);
+			requestHandler();
+		}
+	};
+</script>
