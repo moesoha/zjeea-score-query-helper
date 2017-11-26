@@ -14,7 +14,7 @@
 			<hr>
 			<p>在开始查询之前请点击第一个按钮，输入验证码后输入框会自动锁定，需要重新点击一次才能查询下一个人。</p>
 			<hr>
-			<p>在开始查询之前请点击第一个按钮，输入验证码后输入框会自动锁定，需要重新点击一次才能查询下一个人。</p>
+			<p>GitHub repo地址： https://github.com/moesoha/zjeea-score-query-helper 有问题请在issue中提出。</p>
 			<hr>
 		</details>
 		<details>
@@ -69,6 +69,7 @@
 	}
 	
 	let saveCSVData=function (){
+		saveToLocalStorageWhenSave();
 		let path=document.getElementById('csv-data-path').value;
 		if(path && path!=""){
 			let processData={};
@@ -130,6 +131,7 @@
 	};
 	
 	let saveJSONData=function (){
+		saveToLocalStorageWhenSave();
 		let path=document.getElementById('json-data-path').value;
 		if(path && path!=""){
 			try{
@@ -142,10 +144,15 @@
 		}
 	};
 
-	let showJSONData=function (){
+	let saveToLocalStorageWhenSave=function (){
 		let time=new Date().getTime().toString();
 		let dataInJson=JSON.stringify(dataGlobal);
 		window.localStorage.setItem('data_'+time,dataInJson);
+		return 'data_'+time;
+	}
+
+	let showJSONData=function (){
+		saveToLocalStorageWhenSave();
 		nw.Window.open('popup.html?'+time,{
 			focus: true
 		},function (newWin){
@@ -254,6 +261,7 @@
 				});
 				dataGlobal.push(datas);
 				displayData(datas);
+				document.getElementById('warning').innerText="";
 			}
 		}catch(e){
 			console.error(e);

@@ -13,7 +13,10 @@
     "cheerio": "^1.0.0-rc.2"
   },
   "window": {
-	"width": 400,
-	"height": 600
+    "width": 400,
+    "height": 600
+  },
+  "devDependencies": {
+    "nwjs-builder-phoenix": "^1.14.6"
   }
 }
