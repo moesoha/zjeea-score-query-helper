@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.html",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+	"test": "echo \"Error: no test specified\" && exit 1",
+	"dist": "build --tasks win-x86,win-x64,linux-x86,linux-x64,mac-x64 --mirror https://npm.taobao.org/mirrors/nwjs/ .",
+	"start": "run --x86 --mirror https://npm.taobao.org/mirrors/nwjs/ ."
   },
   "author": "Soha Jin <soha@lohu.info>",
   "license": "MIT",
