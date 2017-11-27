@@ -5,14 +5,17 @@
   "main": "index.html",
   "scripts": {
 	"test": "echo \"Error: no test specified\" && exit 1",
-	"dist": "build --tasks win-x86,win-x64,linux-x86,linux-x64,mac-x64 --mirror https://npm.taobao.org/mirrors/nwjs/ .",
-	"start": "run --x86 --mirror https://npm.taobao.org/mirrors/nwjs/ ."
+	"dist": "build --tasks win-x86,win-x64,linux-x86,linux-x64,mac-x64 --mirror https://dl.nwjs.io/ .",
+	"start": "run --x86 --mirror https://dl.nwjs.io/ ."
   },
   "author": "Soha Jin <soha@lohu.info>",
   "license": "MIT",
   "dependencies": {
     "axios": "^0.17.1",
     "cheerio": "^1.0.0-rc.2"
+  },
+  "build": {
+	"nwVersion": "stable"
   },
   "window": {
     "width": 400,
